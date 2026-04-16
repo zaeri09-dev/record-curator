@@ -3,3 +3,7 @@ pandas
 PyPDF2
 google-generativeai
 chromadb
+langchain
+langchain-google-genai
+langchain-experimental
+matplotlib
