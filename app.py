@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 # --- 데이터베이스 초기화 함수 ---
 @st.cache_resource
 def get_db_collection():
-    client = chromadb.PersistentClient(path="./writable_db")
+    client = chromadb.PersistentClient(path="./active_db")
     collection = client.get_or_create_collection(name="chemistry_reports")
     return collection
 
@@ -32,15 +32,12 @@ st.divider()
 with st.sidebar:
     st.header("⚙️ 기본 설정")
     
-    # 💡 [보안 강화 완벽 해결] 파일에 저장하던 위험한 방식을 완전히 지웠습니다.
-    # 이제 Streamlit이 브라우저가 열려있는 동안에만 '임시 기억(Session)'으로 키를 유지합니다.
     api_key_input = st.text_input(
         "Gemini API 키 입력", 
         type="password", 
         placeholder="API 키를 붙여넣으세요 (새로고침 시 안전하게 지워집니다)"
     )
     
-    # 키가 입력되었을 때만 안심시켜주는 메시지를 띄웁니다.
     if api_key_input:
         st.success("✅ 키 임시 저장 완료! (현재 접속 중에만 안전하게 유지됩니다)")
     else:
@@ -82,17 +79,14 @@ if analyze_btn:
             try:
                 document_text = extract_text_from_pdf(uploaded_file)
                 
-                # LLM 모델 초기화 (메인 분석 요원)
                 llm = ChatGoogleGenerativeAI(
                     model="gemini-3-flash-preview", 
                     google_api_key=api_key_input,
                     temperature=0.2 
                 )
                 
-                # JSON 파서 및 프롬프트 템플릿 설정
                 parser = JsonOutputParser()
                 
-                # 💡 [수정 필요] 선생님의 화학 수업 평가 기준에 맞게 프롬프트 내용을 수정할 수 있습니다.
                 prompt_template = PromptTemplate(
                     template="""
                     너는 통찰력 있는 고등학교 화학 교사야. 아래 학생이 제출한 화학 탐구 보고서를 읽고 평가해줘.
@@ -112,7 +106,6 @@ if analyze_btn:
                     partial_variables={"format_instructions": parser.get_format_instructions()},
                 )
                 
-                # 체인(Chain) 연결 및 실행
                 chain = prompt_template | llm | parser
                 result_data = chain.invoke({"document_text": document_text})
                 
@@ -233,7 +226,7 @@ def get_all_data_df():
 df_all = get_all_data_df()
 
 with tab1:
-    st.markdown("💬 **LangChain Pandas Agent 채팅:** 누적된 학생 데이터를 대상으로 질문을 던지면, 파이썬 코드를 작성해 답을 찾아줍니다.")
+    st.markdown("💬 **LangChain Pandas Agent 채팅:** 누적된 학생 데이터를 대상으로 질문을 던지면, 파이썬 코드를 작성해 답을 찾아줍니다!")
     
     if df_all is None:
         st.info("아직 분석된 학생 데이터가 없습니다. 먼저 보고서를 분석해 주세요.")
@@ -254,7 +247,6 @@ with tab1:
                             temperature=0
                         )
                         
-                        # 💡 랭체인 내부 관리자(AgentExecutor)에게 직접 에러 무시 권한 부여
                         agent = create_pandas_dataframe_agent(
                             llm_for_pandas, 
                             df_all, 
@@ -263,7 +255,6 @@ with tab1:
                             agent_executor_kwargs={"handle_parsing_errors": True} 
                         )
                         
-                        # 💡 구글 AI가 깐깐한 보고서 양식을 무조건 지키도록 강제
                         safe_query = f"{pandas_query}\n\n(※ 중요: 출력 형식 에러를 방지하기 위해, 계산 과정이나 부가 설명 없이 반드시 'Final Answer: [당신의 최종 한국어 답변]' 형식으로만 답하세요.)"
                         
                         answer = agent.invoke(safe_query)
@@ -299,8 +290,9 @@ with tab4:
     reset_confirm = st.text_input("초기화하려면 '초기화' 입력")
     if st.button("전체 데이터 초기화"):
         if reset_confirm == "초기화":
-            if os.path.exists("./writable_db"):
-                shutil.rmtree("./writable_db")
+            # 💡 금고 이름이 active_db로 변경되었으므로 삭제 코드도 동일하게 맞춰줍니다.
+            if os.path.exists("./active_db"):
+                shutil.rmtree("./active_db")
             st.cache_resource.clear()
             st.success("초기화 완료! 새로고침(F5) 하세요.")
         else:
