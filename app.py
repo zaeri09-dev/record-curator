@@ -6,7 +6,6 @@ import chromadb
 import os 
 import shutil
 
-# 💡 [핵심 변경] Pandas AI 대신 LangChain의 공식 데이터 분석 요원(Agent)을 불러옵니다.
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
@@ -23,9 +22,9 @@ def get_db_collection():
 collection = get_db_collection()
 
 # 화면 기본 설정
-st.set_page_config(page_title="생기부 역량 큐레이터", page_icon="🧪", layout="wide")
+st.set_page_config(page_title="생기부 큐레이터", page_icon="🧪", layout="wide")
 
-st.title("🧪 RAG 기반 생기부 역량 큐레이터")
+st.title("🧪 RAG 기반 생기부 큐레이터")
 st.markdown("학생의 탐구 보고서를 분석하고, **LangChain Agent**를 활용해 데이터를 정밀하게 관리·통계냅니다.")
 st.divider()
 
@@ -83,7 +82,7 @@ if analyze_btn:
             try:
                 document_text = extract_text_from_pdf(uploaded_file)
                 
-                # LLM 모델 초기화
+                # LLM 모델 초기화 (메인 분석 요원)
                 llm = ChatGoogleGenerativeAI(
                     model="gemini-3-flash-preview", 
                     google_api_key=api_key_input,
@@ -104,7 +103,7 @@ if analyze_btn:
                     - 과학적탐구력 (int, 1~100)
                     - 문제해결력 (int, 1~100)
                     - 논리적사고력 (int, 1~100)
-                    - 세특초안 (string, 150자 이내 명사형 종결어미)
+                    - 세특초안 (string, 300자 이내 명사형 종결어미)
 
                     [학생 보고서 내용]
                     {document_text}
@@ -249,18 +248,20 @@ with tab1:
             elif pandas_query:
                 with st.spinner("LangChain 요원이 데이터를 분석하고 있습니다... 🧮"):
                     try:
-                        # 💡 [핵심 변경] LangChain의 Pandas 요원(Agent) 출동!
-                        llm_for_pandas = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", google_api_key=api_key_input, temperature=1)
+                        llm_for_pandas = ChatGoogleGenerativeAI(
+                            model="gemini-3-flash-preview", 
+                            google_api_key=api_key_input, 
+                            temperature=0
+                        )
                         
-                        # 보안 경고를 해제하고 파이썬 코드를 실행할 수 있게 허용합니다.
                         agent = create_pandas_dataframe_agent(
                             llm_for_pandas, 
                             df_all, 
                             verbose=True, 
-                            allow_dangerous_code=True
+                            allow_dangerous_code=True,
+                            handle_parsing_errors=True # 💡 [오류 해결] AI가 사람처럼 자연스러운 문장으로 대답하더라도 오류를 내지 않고 그대로 출력하도록 허용합니다.
                         )
                         
-                        # AI 요원에게 질문 던지기
                         answer = agent.invoke(pandas_query)
                         
                         st.success("✨ 분석 완료!")
