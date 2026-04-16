@@ -250,7 +250,7 @@ with tab1:
                 with st.spinner("LangChain 요원이 데이터를 분석하고 있습니다... 🧮"):
                     try:
                         # 💡 [핵심 변경] LangChain의 Pandas 요원(Agent) 출동!
-                        llm_for_pandas = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key_input, temperature=0)
+                        llm_for_pandas = ChatGoogleGenerativeAI(model="gemini-3-flash", google_api_key=api_key_input, temperature=1)
                         
                         # 보안 경고를 해제하고 파이썬 코드를 실행할 수 있게 허용합니다.
                         agent = create_pandas_dataframe_agent(
