@@ -5,18 +5,19 @@ import google.generativeai as genai
 import json
 import chromadb 
 import os 
+import shutil
 
 # --- 데이터베이스 초기화 함수 ---
 @st.cache_resource
 def get_db_collection():
-    client = chromadb.PersistentClient(path="./student_db")
+    client = chromadb.PersistentClient(path="./writable_db")
     collection = client.get_or_create_collection(name="chemistry_reports")
     return collection
 
 collection = get_db_collection()
 
 # 화면 기본 설정
-st.set_page_config(page_title="화학 역량 큐레이터", page_icon="🧪", layout="wide")
+st.set_page_config(page_title="생기부 작성 큐레이터", page_icon="🧪", layout="wide")
 
 st.title("🧪 멀티모달 RAG 기반 학생 역량 큐레이터")
 st.markdown("학생의 탐구 보고서(PDF)를 분석하여 핵심 역량을 추출하고 세특 데이터를 차곡차곡 누적합니다.")
@@ -199,8 +200,8 @@ st.divider()
 
 # --- 화면 하단: 3. 전체 데이터 관리 및 삭제 ---
 st.header("📋 3. 전체 데이터베이스 관리")
-# 💡 [핵심 추가] 탭 영역에 '데이터 삭제 및 초기화'를 추가했습니다.
-tab1, tab2, tab3 = st.tabs(["🔍 의미/키워드 통합 검색", "💾 엑셀(CSV) 전체 다운로드", "🗑️ 데이터 삭제 및 초기화"])
+# 💡 [핵심 추가] 4번째 탭 "엑셀 백업본으로 복원" 기능이 추가되었습니다!
+tab1, tab2, tab3, tab4 = st.tabs(["🔍 의미/키워드 통합 검색", "💾 엑셀(CSV) 전체 다운로드", "🗑️ 데이터 삭제/초기화", "♻️ 엑셀 백업본으로 복원"])
 
 with tab1:
     st.markdown("단어나 문장을 입력하면, 그 의미와 가장 비슷한 세특 기록을 가진 학생을 순서대로 찾아줍니다.")
@@ -275,7 +276,6 @@ with tab2:
         else:
             st.info("아직 저장된 학생 데이터가 없습니다.")
 
-# 💡 [핵심 추가] 데이터 삭제 및 초기화 기능 구현
 with tab3:
     st.markdown("특정 학생의 데이터를 삭제하거나, 새로운 학기를 맞이하여 전체 데이터베이스를 깨끗하게 비웁니다.")
     
@@ -292,10 +292,8 @@ with tab3:
             if del_id and del_name:
                 del_query = f"{del_id}_{del_name}"
                 try:
-                    # 삭제하려는 학생이 DB에 있는지 먼저 확인합니다.
                     existing_check = collection.get(ids=[del_query])
                     if existing_check and existing_check['ids']:
-                        # DB에서 해당 ID를 영구 삭제합니다.
                         collection.delete(ids=[del_query])
                         st.success(f"🗑️ '{del_id} {del_name}' 학생의 데이터가 완전히 삭제되었습니다.")
                     else:
@@ -314,15 +312,66 @@ with tab3:
     if st.button("전체 데이터 초기화 실행", type="primary"):
         if reset_confirm == "초기화":
             try:
-                # DB에 있는 모든 데이터를 가져옵니다.
-                all_data = collection.get()
-                if all_data and all_data['ids']:
-                    # 가져온 모든 ID를 한 번에 삭제하여 금고를 비웁니다.
-                    collection.delete(ids=all_data['ids'])
-                    st.success("✨ 데이터베이스가 깨끗하게 초기화되었습니다. 새로운 학기를 시작하세요!")
-                else:
-                    st.info("이미 데이터베이스가 비어있는 상태입니다.")
+                if os.path.exists("./writable_db"):
+                    shutil.rmtree("./writable_db")
+                st.cache_resource.clear()
+                st.success("✨ 데이터베이스가 깨끗하게 초기화되었습니다. 웹 브라우저를 새로고침(F5) 하시면 빈 금고로 다시 시작합니다!")
             except Exception as e:
                 st.error(f"초기화 중 오류가 발생했습니다: {e}")
         else:
             st.warning("'초기화'라는 단어를 정확히 입력해야만 작동합니다.")
+
+# 💡 [핵심 추가] 엑셀 파일을 읽어서 데이터베이스 금고에 다시 차곡차곡 넣어주는 마법의 기능입니다.
+with tab4:
+    st.markdown("클라우드 서버가 초기화되었을 때, 이전에 다운로드해둔 엑셀(CSV) 파일을 업로드하여 데이터를 완벽하게 복원합니다.")
+    
+    backup_file = st.file_uploader("다운로드했던 엑셀(CSV) 백업 파일 업로드", type=["csv"])
+    
+    if st.button("♻️ 데이터베이스 복원 실행", type="primary"):
+        if backup_file is not None:
+            try:
+                # 엑셀(CSV) 파일을 읽어옵니다. (빈칸은 에러가 나지 않게 빈 문자열로 채워줍니다)
+                df_backup = pd.read_csv(backup_file).fillna("")
+                
+                # 원본 파일이 맞는지 기둥(열 이름)을 검사합니다.
+                required_cols = ["학번", "이름", "과학적탐구력", "문제해결력", "논리적사고력", "분석횟수", "누적세특기록"]
+                if not all(col in df_backup.columns for col in required_cols):
+                    st.error("잘못된 파일 형식입니다. 이 시스템에서 다운로드했던 원본 파일을 올려주세요.")
+                else:
+                    docs = []
+                    metas = []
+                    ids = []
+                    
+                    # 엑셀의 줄(행)을 하나씩 읽으면서 복원할 데이터를 만듭니다.
+                    for index, row in df_backup.iterrows():
+                        # 학번이 숫자로 저장된 경우 소수점(.0)이 생길 수 있으므로 깔끔하게 처리합니다.
+                        s_id = str(row["학번"]).split('.')[0] if str(row["학번"]) else ""
+                        s_name = str(row["이름"])
+                        unique_id = f"{s_id}_{s_name}"
+                        
+                        doc = str(row["누적세특기록"])
+                        meta = {
+                            "과학적탐구력": int(row["과학적탐구력"]) if row["과학적탐구력"] else 0,
+                            "문제해결력": int(row["문제해결력"]) if row["문제해결력"] else 0,
+                            "논리적사고력": int(row["논리적사고력"]) if row["논리적사고력"] else 0,
+                            "분석횟수": int(row["분석횟수"]) if row["분석횟수"] else 1
+                        }
+                        
+                        docs.append(doc)
+                        metas.append(meta)
+                        ids.append(unique_id)
+                        
+                    if ids:
+                        # 복원용 데이터를 한꺼번에 금고(DB)에 집어넣습니다!
+                        collection.upsert(
+                            documents=docs,
+                            metadatas=metas,
+                            ids=ids
+                        )
+                        st.success(f"🎉 총 {len(ids)}명의 학생 데이터가 성공적으로 복원되었습니다! 이제 다시 검색이 가능합니다.")
+                    else:
+                        st.warning("파일 안에 복원할 데이터가 없습니다.")
+            except Exception as e:
+                st.error(f"복원 중 오류가 발생했습니다: {e}")
+        else:
+            st.warning("먼저 CSV 파일을 업로드해 주세요.")
