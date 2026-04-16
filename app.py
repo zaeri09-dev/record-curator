@@ -22,9 +22,9 @@ def get_db_collection():
 collection = get_db_collection()
 
 # 화면 기본 설정
-st.set_page_config(page_title="생기부 큐레이터", page_icon="🧑‍💻", layout="wide")
+st.set_page_config(page_title="화학 역량 큐레이터", page_icon="🧪", layout="wide")
 
-st.title("🧪 RAG 기반 생기부 큐레이터")
+st.title("🧪 멀티모달 RAG 기반 학생 역량 큐레이터")
 st.markdown("학생의 탐구 보고서를 분석하고, **LangChain Agent**를 활용해 데이터를 정밀하게 관리·통계냅니다.")
 st.divider()
 
@@ -226,7 +226,7 @@ def get_all_data_df():
 df_all = get_all_data_df()
 
 with tab1:
-    st.markdown("💬 **LangChain Pandas Agent 채팅:** 누적된 학생 데이터를 대상으로 질문을 던지면, 파이썬 코드를 작성해 답을 찾아줍니다!")
+    st.markdown("💬 **LangChain Pandas Agent 채팅:** 누적된 학생 데이터를 대상으로 질문을 던지면, 랭체인 요원이 파이썬 코드를 작성해 답을 찾아줍니다!")
     
     if df_all is None:
         st.info("아직 분석된 학생 데이터가 없습니다. 먼저 보고서를 분석해 주세요.")
@@ -239,7 +239,7 @@ with tab1:
             if not api_key_input:
                 st.error("왼쪽 사이드바에 API 키를 입력해 주세요.")
             elif pandas_query:
-                with st.spinner("LangChain Agent가 데이터를 분석하고 있습니다... 🧮"):
+                with st.spinner("LangChain 요원이 데이터를 분석하고 있습니다... 🧮"):
                     try:
                         llm_for_pandas = ChatGoogleGenerativeAI(
                             model="gemini-3-flash-preview", 
@@ -290,11 +290,16 @@ with tab4:
     reset_confirm = st.text_input("초기화하려면 '초기화' 입력")
     if st.button("전체 데이터 초기화"):
         if reset_confirm == "초기화":
-            # 💡 금고 이름이 active_db로 변경되었으므로 삭제 코드도 동일하게 맞춰줍니다.
-            if os.path.exists("./active_db"):
-                shutil.rmtree("./active_db")
-            st.cache_resource.clear()
-            st.success("초기화 완료! 새로고침(F5) 하세요.")
+            try:
+                # 💡 [핵심 수정] 폴더를 폭파하지 않고, 안에 있는 데이터(서류)만 모두 삭제하는 방식으로 변경!
+                all_data = collection.get()
+                if all_data and all_data['ids']:
+                    collection.delete(ids=all_data['ids']) # 서류 파쇄 완료!
+                    st.success("✨ 데이터베이스가 깨끗하게 비워졌습니다! (새로고침 하세요)")
+                else:
+                    st.info("이미 데이터베이스가 비어있습니다.")
+            except Exception as e:
+                st.error(f"초기화 중 오류가 발생했습니다: {e}")
         else:
             st.warning("'초기화'를 정확히 입력하세요.")
 
