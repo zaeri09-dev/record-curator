@@ -22,7 +22,7 @@ def get_db_collection():
 collection = get_db_collection()
 
 # 화면 기본 설정
-st.set_page_config(page_title="생기부 큐레이터", page_icon="🧪", layout="wide")
+st.set_page_config(page_title="생기부 큐레이터", page_icon="🧑‍💻", layout="wide")
 
 st.title("🧪 RAG 기반 생기부 큐레이터")
 st.markdown("학생의 탐구 보고서를 분석하고, **LangChain Agent**를 활용해 데이터를 정밀하게 관리·통계냅니다.")
@@ -32,19 +32,19 @@ st.divider()
 with st.sidebar:
     st.header("⚙️ 기본 설정")
     
-    API_KEY_FILE = "api_key.txt"
-    saved_api_key = ""
+    # 💡 [보안 강화 완벽 해결] 파일에 저장하던 위험한 방식을 완전히 지웠습니다.
+    # 이제 Streamlit이 브라우저가 열려있는 동안에만 '임시 기억(Session)'으로 키를 유지합니다.
+    api_key_input = st.text_input(
+        "Gemini API 키 입력", 
+        type="password", 
+        placeholder="API 키를 붙여넣으세요 (새로고침 시 안전하게 지워집니다)"
+    )
     
-    if os.path.exists(API_KEY_FILE):
-        with open(API_KEY_FILE, "r") as f:
-            saved_api_key = f.read().strip()
-            
-    api_key_input = st.text_input("Gemini API 키 입력", type="password", value=saved_api_key, placeholder="API 키를 붙여넣으세요")
-    
-    if st.button("🔑 API 키 저장"):
-        with open(API_KEY_FILE, "w") as f:
-            f.write(api_key_input)
-        st.success("API 키가 안전하게 저장되었습니다!")
+    # 키가 입력되었을 때만 안심시켜주는 메시지를 띄웁니다.
+    if api_key_input:
+        st.success("✅ 키 임시 저장 완료! (현재 접속 중에만 안전하게 유지됩니다)")
+    else:
+        st.info("💡 분석 기능을 사용하려면 API 키를 한 번 입력해 주세요.")
     
     st.divider()
     
@@ -103,7 +103,7 @@ if analyze_btn:
                     - 과학적탐구력 (int, 1~100)
                     - 문제해결력 (int, 1~100)
                     - 논리적사고력 (int, 1~100)
-                    - 세특초안 (string, 300자 이내 명사형 종결어미)
+                    - 세특초안 (string, 150자 이내 명사형 종결어미)
 
                     [학생 보고서 내용]
                     {document_text}
@@ -233,7 +233,7 @@ def get_all_data_df():
 df_all = get_all_data_df()
 
 with tab1:
-    st.markdown("💬 **LangChain Pandas Agent 채팅:** 누적된 학생 데이터를 대상으로 질문을 던지면, 랭체인 요원이 파이썬 코드를 작성해 답을 찾아줍니다!")
+    st.markdown("💬 **LangChain Pandas Agent 채팅:** 누적된 학생 데이터를 대상으로 질문을 던지면, 파이썬 코드를 작성해 답을 찾아줍니다.")
     
     if df_all is None:
         st.info("아직 분석된 학생 데이터가 없습니다. 먼저 보고서를 분석해 주세요.")
@@ -246,7 +246,7 @@ with tab1:
             if not api_key_input:
                 st.error("왼쪽 사이드바에 API 키를 입력해 주세요.")
             elif pandas_query:
-                with st.spinner("LangChain 요원이 데이터를 분석하고 있습니다... 🧮"):
+                with st.spinner("LangChain Agent가 데이터를 분석하고 있습니다... 🧮"):
                     try:
                         llm_for_pandas = ChatGoogleGenerativeAI(
                             model="gemini-3-flash-preview", 
@@ -254,15 +254,19 @@ with tab1:
                             temperature=0
                         )
                         
+                        # 💡 랭체인 내부 관리자(AgentExecutor)에게 직접 에러 무시 권한 부여
                         agent = create_pandas_dataframe_agent(
                             llm_for_pandas, 
                             df_all, 
                             verbose=True, 
                             allow_dangerous_code=True,
-                            handle_parsing_errors=True # 💡 [오류 해결] AI가 사람처럼 자연스러운 문장으로 대답하더라도 오류를 내지 않고 그대로 출력하도록 허용합니다.
+                            agent_executor_kwargs={"handle_parsing_errors": True} 
                         )
                         
-                        answer = agent.invoke(pandas_query)
+                        # 💡 구글 AI가 깐깐한 보고서 양식을 무조건 지키도록 강제
+                        safe_query = f"{pandas_query}\n\n(※ 중요: 출력 형식 에러를 방지하기 위해, 계산 과정이나 부가 설명 없이 반드시 'Final Answer: [당신의 최종 한국어 답변]' 형식으로만 답하세요.)"
+                        
+                        answer = agent.invoke(safe_query)
                         
                         st.success("✨ 분석 완료!")
                         st.write(answer["output"])
