@@ -197,9 +197,10 @@ if search_btn:
 
 st.divider()
 
-# --- 화면 하단: 3. 전체 데이터 관리 및 의미 기반 검색 ---
+# --- 화면 하단: 3. 전체 데이터 관리 및 삭제 ---
 st.header("📋 3. 전체 데이터베이스 관리")
-tab1, tab2 = st.tabs(["🔍 의미/키워드 통합 검색", "💾 엑셀(CSV) 전체 다운로드"])
+# 💡 [핵심 추가] 탭 영역에 '데이터 삭제 및 초기화'를 추가했습니다.
+tab1, tab2, tab3 = st.tabs(["🔍 의미/키워드 통합 검색", "💾 엑셀(CSV) 전체 다운로드", "🗑️ 데이터 삭제 및 초기화"])
 
 with tab1:
     st.markdown("단어나 문장을 입력하면, 그 의미와 가장 비슷한 세특 기록을 가진 학생을 순서대로 찾아줍니다.")
@@ -262,7 +263,6 @@ with tab2:
             df = pd.DataFrame(records)
             st.dataframe(df, use_container_width=True)
             
-            # 💡 [핵심 수정] 엑셀에서 한글이 깨지지 않도록 바이트(byte) 형태로 꽁꽁 묶어서 내보냅니다.
             csv_data = df.to_csv(index=False).encode('utf-8-sig')
             
             st.download_button(
@@ -274,3 +274,55 @@ with tab2:
             )
         else:
             st.info("아직 저장된 학생 데이터가 없습니다.")
+
+# 💡 [핵심 추가] 데이터 삭제 및 초기화 기능 구현
+with tab3:
+    st.markdown("특정 학생의 데이터를 삭제하거나, 새로운 학기를 맞이하여 전체 데이터베이스를 깨끗하게 비웁니다.")
+    
+    st.subheader("👤 개별 학생 데이터 삭제")
+    del_col1, del_col2, del_col3 = st.columns([2, 2, 1])
+    with del_col1:
+        del_id = st.text_input("삭제할 학번", placeholder="예: 10101", key="del_id")
+    with del_col2:
+        del_name = st.text_input("삭제할 이름", placeholder="예: 김화학", key="del_name")
+    with del_col3:
+        st.write("") 
+        st.write("")
+        if st.button("개별 데이터 삭제"):
+            if del_id and del_name:
+                del_query = f"{del_id}_{del_name}"
+                try:
+                    # 삭제하려는 학생이 DB에 있는지 먼저 확인합니다.
+                    existing_check = collection.get(ids=[del_query])
+                    if existing_check and existing_check['ids']:
+                        # DB에서 해당 ID를 영구 삭제합니다.
+                        collection.delete(ids=[del_query])
+                        st.success(f"🗑️ '{del_id} {del_name}' 학생의 데이터가 완전히 삭제되었습니다.")
+                    else:
+                        st.warning("해당 학생의 데이터가 존재하지 않습니다. 학번과 이름을 다시 확인해 주세요.")
+                except Exception as e:
+                    st.error(f"삭제 중 오류가 발생했습니다: {e}")
+            else:
+                st.warning("학번과 이름을 모두 입력해 주세요.")
+                
+    st.divider()
+    
+    st.subheader("🚨 전체 데이터베이스 초기화 (위험)")
+    st.error("이 작업은 되돌릴 수 없습니다. 저장된 모든 학생의 데이터가 영구적으로 삭제됩니다.")
+    reset_confirm = st.text_input("정말로 초기화하려면 아래 빈칸에 '초기화'라고 정확히 입력하세요.")
+    
+    if st.button("전체 데이터 초기화 실행", type="primary"):
+        if reset_confirm == "초기화":
+            try:
+                # DB에 있는 모든 데이터를 가져옵니다.
+                all_data = collection.get()
+                if all_data and all_data['ids']:
+                    # 가져온 모든 ID를 한 번에 삭제하여 금고를 비웁니다.
+                    collection.delete(ids=all_data['ids'])
+                    st.success("✨ 데이터베이스가 깨끗하게 초기화되었습니다. 새로운 학기를 시작하세요!")
+                else:
+                    st.info("이미 데이터베이스가 비어있는 상태입니다.")
+            except Exception as e:
+                st.error(f"초기화 중 오류가 발생했습니다: {e}")
+        else:
+            st.warning("'초기화'라는 단어를 정확히 입력해야만 작동합니다.")
