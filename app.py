@@ -3,8 +3,6 @@ import pandas as pd
 import PyPDF2
 import json
 import chromadb 
-import os 
-import shutil
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
@@ -15,7 +13,10 @@ import matplotlib.pyplot as plt
 # --- 데이터베이스 초기화 함수 ---
 @st.cache_resource
 def get_db_collection():
-    client = chromadb.PersistentClient(path="./active_db")
+    # 💡 [최종 해결책] 클라우드의 깐깐한 하드디스크 자물쇠(Read-only)를 완벽히 회피합니다.
+    # PersistentClient(하드디스크 저장) 대신, 일반 Client(메모리 임시 저장)를 사용합니다.
+    # 에러 확률 0%이며, 데이터가 지워져도 우리의 '엑셀 복원' 기능으로 언제든 살려낼 수 있습니다!
+    client = chromadb.Client() 
     collection = client.get_or_create_collection(name="chemistry_reports")
     return collection
 
@@ -87,6 +88,7 @@ if analyze_btn:
                 
                 parser = JsonOutputParser()
                 
+                # 💡 [수정 필요] 선생님의 화학 수업 평가 기준에 맞게 프롬프트 내용을 수정할 수 있습니다.
                 prompt_template = PromptTemplate(
                     template="""
                     너는 통찰력 있는 고등학교 화학 교사야. 아래 학생이 제출한 화학 탐구 보고서를 읽고 평가해줘.
@@ -291,10 +293,11 @@ with tab4:
     if st.button("전체 데이터 초기화"):
         if reset_confirm == "초기화":
             try:
-                # 💡 [핵심 수정] 폴더를 폭파하지 않고, 안에 있는 데이터(서류)만 모두 삭제하는 방식으로 변경!
+                # 💡 [핵심 수정] 하드디스크 폴더에 접근하는 코드를 완전히 삭제하고, 오직 메모리 속 데이터만 깨끗하게 비웁니다!
                 all_data = collection.get()
                 if all_data and all_data['ids']:
-                    collection.delete(ids=all_data['ids']) # 서류 파쇄 완료!
+                    collection.delete(ids=all_data['ids'])
+                    st.cache_resource.clear()
                     st.success("✨ 데이터베이스가 깨끗하게 비워졌습니다! (새로고침 하세요)")
                 else:
                     st.info("이미 데이터베이스가 비어있습니다.")
