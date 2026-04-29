@@ -97,7 +97,16 @@ st.markdown(custom_css, unsafe_allow_html=True)
 
 # --- 상단 헤더 영역 ---
 st.markdown('<p class="main-title">🧬 Edu-Curator AI</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">RAG 기반 역량 분석 및 세특 자동화 대시보드</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">멀티모달 RAG 기반 학생 화학 역량 분석 및 세특 자동화 대시보드</p>', unsafe_allow_html=True)
+
+# 💡 [오류 해결] 실수로 빠뜨렸던 PDF 텍스트 추출 함수를 다시 추가했습니다!
+# --- 공통 함수: PDF 텍스트 추출 ---
+def extract_text_from_pdf(pdf_file):
+    reader = PyPDF2.PdfReader(pdf_file)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text()
+    return text
 
 # --- 공통 데이터 로드 함수 ---
 def get_all_data_df():
@@ -187,7 +196,7 @@ with main_tab1:
                     
                     prompt_template = PromptTemplate(
                         template="""
-                        너는 통찰력 있는 고등학교 과학 교사야. 아래 학생이 제출한 과학 탐구 보고서를 읽고 평가해줘.
+                        너는 통찰력 있는 고등학교 화학 교사야. 아래 학생이 제출한 화학 탐구 보고서를 읽고 평가해줘.
                         
                         {format_instructions}
                         
@@ -320,8 +329,8 @@ with main_tab2:
                                         
                                         summary_prompt = PromptTemplate(
                                             template="""
-                                            너는 통찰력 있는 고등학교 과학 교사야. 
-                                            아래에 한 학생의 한 학기 동안 누적된 과학 탐구 보고서 평가 기록(조각들)이 있어.
+                                            너는 통찰력 있는 고등학교 화학 교사야. 
+                                            아래에 한 학생의 한 학기 동안 누적된 화학 탐구 보고서 평가 기록(조각들)이 있어.
                                             
                                             이 기록들을 모두 종합해서, 학교생활기록부 '세부능력 및 특기사항(세특)'에 바로 복사해 넣을 수 있도록 
                                             하나의 매끄럽고 훌륭한 문단으로 작성해 줘.
