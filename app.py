@@ -23,14 +23,14 @@ collection = get_db_collection()
 # 화면 기본 설정 (타이틀, 아이콘, 와이드 레이아웃)
 st.set_page_config(page_title="Edu-Curator AI", page_icon="🧬", layout="wide")
 
-# 🎨 [완전 개편] 다크/라이트 모드를 모두 지원하는 세련된 대시보드 CSS
+# 🎨 [디자인 완전 개편] 파스텔톤 붉은색(코랄/핑크) 계열의 세련된 대시보드 CSS
 custom_css = """
 <style>
-    /* 최상단 메인 타이틀 그라데이션 효과 */
+    /* 최상단 메인 타이틀 파스텔 핑크/코랄 그라데이션 효과 */
     .main-title {
         font-size: 2.8rem;
         font-weight: 900;
-        background: -webkit-linear-gradient(45deg, #4A90E2, #9013FE);
+        background: -webkit-linear-gradient(45deg, #FF758C, #FF7EB3);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0px;
@@ -43,31 +43,9 @@ custom_css = """
         margin-bottom: 2rem;
     }
 
-    /* 탭(Tab) 디자인 세련되게 변경 */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-        border-bottom: 2px solid var(--secondary-background-color);
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: transparent;
-        border-radius: 4px 4px 0px 0px;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        font-size: 1.1rem;
-        font-weight: 600;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: transparent !important;
-        border-bottom: 3px solid #4A90E2 !important;
-        color: #4A90E2 !important;
-    }
-
-    /* Primary 버튼 (강조 버튼) 스타일 */
+    /* Primary 버튼 (강조 버튼) 파스텔톤 스타일 */
     .stButton > button[kind="primary"] {
-        background-color: #4A90E2;
+        background-color: #FF8C9A;
         color: white;
         border-radius: 8px;
         border: none;
@@ -76,8 +54,8 @@ custom_css = """
         transition: all 0.3s;
     }
     .stButton > button[kind="primary"]:hover {
-        background-color: #357ABD;
-        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+        background-color: #FF758C;
+        box-shadow: 0 4px 12px rgba(255, 117, 140, 0.3);
         transform: translateY(-2px);
     }
     
@@ -88,18 +66,48 @@ custom_css = """
         transition: all 0.3s;
     }
     .stButton > button[kind="secondary"]:hover {
-        border-color: #4A90E2;
-        color: #4A90E2;
+        border-color: #FF8C9A;
+        color: #FF8C9A;
+    }
+
+    /* 📌 왼쪽 사이드바 메뉴 디자인 (첨부 이미지 스타일) */
+    /* 라디오 버튼의 기본 동그라미 숨기기 */
+    [data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {
+        display: none !important;
+    }
+    
+    /* 메뉴 항목 버튼처럼 둥글고 예쁘게 만들기 */
+    [data-testid="stSidebar"] [role="radiogroup"] label {
+        padding: 12px 15px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        background-color: transparent;
+    }
+    
+    /* 마우스 올렸을 때 연한 파스텔 핑크 배경 */
+    [data-testid="stSidebar"] [role="radiogroup"] label:hover {
+        background-color: #FFF0F2; 
+    }
+    
+    /* 메뉴 글씨체 설정 */
+    [data-testid="stSidebar"] [role="radiogroup"] label p {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    /* 선택된 탭(3번 탭 내부 등) 색상 변경 */
+    .stTabs [aria-selected="true"] {
+        background-color: transparent !important;
+        border-bottom: 3px solid #FF8C9A !important;
+        color: #FF8C9A !important;
     }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# --- 상단 헤더 영역 ---
-st.markdown('<p class="main-title">🧬 Edu-Curator AI</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">멀티모달 RAG 기반 학생 화학 역량 분석 및 세특 자동화 대시보드</p>', unsafe_allow_html=True)
-
-# 💡 [오류 해결] 실수로 빠뜨렸던 PDF 텍스트 추출 함수를 다시 추가했습니다!
 # --- 공통 함수: PDF 텍스트 추출 ---
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)
@@ -130,11 +138,27 @@ def get_all_data_df():
 
 df_all = get_all_data_df()
 
-# --- 사이드바 (환경 설정 및 API 키) ---
+# ==========================================
+# ⬅️ 왼쪽 사이드바 영역 (메뉴 및 환경 설정)
+# ==========================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2042/2042885.png", width=60) # 장식용 아이콘
-    st.header("⚙️ 시스템 설정")
+    st.markdown("### 📌 AI 평가 보조 메뉴")
     
+    # 💡 [핵심 변경] 상단 탭을 왼쪽 메뉴로 변경했습니다.
+    selected_menu = st.radio(
+        "메뉴를 선택하세요", 
+        [
+            "📥 1. 보고서 분석 및 데이터 적재", 
+            "🧑‍🎓 2. 학생 개별 대시보드 (세특)", 
+            "📈 3. 학급 전체 통계 및 DB 관리"
+        ],
+        label_visibility="collapsed" # '메뉴를 선택하세요' 글씨는 숨기고 항목만 보여줍니다.
+    )
+    
+    st.divider() # 구분선
+    
+    st.header("⚙️ 시스템 설정")
     api_key_input = st.text_input(
         "Gemini API Key", 
         type="password", 
@@ -150,17 +174,20 @@ with st.sidebar:
     st.divider()
     st.caption("© 2026 AI융합교육대학원 프로젝트")
 
-# 💡 [레이아웃 개편] 화면을 크게 3개의 탭으로 나누어 앱(App)처럼 보이게 만듭니다.
-main_tab1, main_tab2, main_tab3 = st.tabs([
-    "📥 1. 보고서 분석 및 데이터 적재", 
-    "🧑‍🎓 2. 학생 개별 대시보드 (세특 작성)", 
-    "📈 3. 학급 전체 통계 및 DB 관리"
-])
 
 # ==========================================
-# 탭 1: 보고서 분석 및 데이터 적재
+# ➡️ 오른쪽 메인 화면 영역 (사이드바 메뉴 선택에 따라 변경)
 # ==========================================
-with main_tab1:
+
+# --- 상단 헤더 영역 ---
+st.markdown('<p class="main-title">🧬 Edu-Curator AI</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">멀티모달 RAG 기반 학생 화학 역량 분석 및 세특 자동화 대시보드</p>', unsafe_allow_html=True)
+
+
+# ------------------------------------------
+# 메뉴 1: 보고서 분석 및 데이터 적재
+# ------------------------------------------
+if selected_menu == "📥 1. 보고서 분석 및 데이터 적재":
     st.write("학생이 제출한 PDF 탐구 보고서를 업로드하면, AI가 역량을 분석하여 데이터베이스에 누적합니다.")
     
     # 카드로 감싸서 세련되게 표현
@@ -187,6 +214,7 @@ with main_tab1:
                 try:
                     document_text = extract_text_from_pdf(uploaded_file)
                     
+                    # 💡 [수정 필요] 향후 더 최신 모델이 나오면 아래 "gemini-3-flash-preview" 이름을 변경하세요.
                     llm = ChatGoogleGenerativeAI(
                         model="gemini-3-flash-preview", 
                         google_api_key=api_key_input,
@@ -262,17 +290,18 @@ with main_tab1:
                 except Exception as e:
                     st.error(f"분석 중 오류 발생: {e}")
 
-# ==========================================
-# 탭 2: 학생 개별 대시보드 (조회 및 종합)
-# ==========================================
-with main_tab2:
+
+# ------------------------------------------
+# 메뉴 2: 학생 개별 대시보드 (세특 작성)
+# ------------------------------------------
+elif selected_menu == "🧑‍🎓 2. 학생 개별 대시보드 (세특)":
     st.write("저장된 학생을 선택하여 지금까지의 누적 데이터를 확인하고, AI를 통해 최종 생기부 세특을 자동 작성합니다.")
     
     # 데이터 최신화
     df_all_tab2 = get_all_data_df()
     
     if df_all_tab2 is None or df_all_tab2.empty:
-        st.info("💡 저장된 학생 데이터가 없습니다. 먼저 [1. 보고서 분석] 탭에서 데이터를 입력해 주세요.")
+        st.info("💡 저장된 학생 데이터가 없습니다. 먼저 왼쪽 [1. 보고서 분석] 메뉴에서 데이터를 입력해 주세요.")
     else:
         with st.container(border=True):
             student_list = df_all_tab2.apply(lambda x: f"{x['학번']} {x['이름']}", axis=1).tolist()
@@ -317,10 +346,11 @@ with main_tab2:
                         
                         if st.button("🚀 NEIS 입력용 세특 자동 작성", type="primary", use_container_width=True):
                             if not api_key_input:
-                                st.error("API 키를 입력해 주세요.")
+                                st.error("왼쪽 메뉴 아래의 설정에서 API 키를 입력해 주세요.")
                             else:
                                 with st.spinner("최고의 세특을 작성 중입니다... ✍️"):
                                     try:
+                                        # 💡 [수정 필요] 모델명 변경 시 수정
                                         summary_llm = ChatGoogleGenerativeAI(
                                             model="gemini-3-flash-preview", 
                                             google_api_key=api_key_input,
@@ -356,12 +386,14 @@ with main_tab2:
                                     except Exception as e:
                                         st.error(f"세특 작성 오류: {e}")
 
-# ==========================================
-# 탭 3: 학급 전체 통계 및 DB 관리
-# ==========================================
-with main_tab3:
+
+# ------------------------------------------
+# 메뉴 3: 학급 전체 통계 및 DB 관리
+# ------------------------------------------
+elif selected_menu == "📈 3. 학급 전체 통계 및 DB 관리":
     st.write("학급 전체의 통계를 자연어로 분석하고, 데이터를 안전하게 백업 및 관리합니다.")
     
+    # 3번 메뉴 내부는 기존처럼 작은 탭(Tab)으로 유지하여 깔끔하게 정리합니다.
     sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs([
         "💬 AI 데이터 분석관", 
         "🔍 키워드 통합 검색", 
@@ -385,10 +417,11 @@ with main_tab3:
                 
                 if st.button("분석 요청", type="primary"):
                     if not api_key_input:
-                        st.error("API 키가 필요합니다.")
+                        st.error("왼쪽 메뉴 아래의 설정에서 API 키가 필요합니다.")
                     elif pandas_query:
                         with st.spinner("데이터베이스를 스캔 중입니다... 🔎"):
                             try:
+                                # 💡 [수정 필요] 모델명 변경 시 수정
                                 llm_for_pandas = ChatGoogleGenerativeAI(
                                     model="gemini-3-flash-preview", 
                                     google_api_key=api_key_input, 
