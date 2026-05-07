@@ -93,9 +93,10 @@ custom_css = """
     
     /* 메뉴 글씨체 설정 */
     [data-testid="stSidebar"] [role="radiogroup"] label p {
-        font-size: 1.15rem;
+        font-size: 1.05rem; /* 글씨 크기를 살짝 줄여 한 줄에 들어가게 조정 (기존 1.15rem) */
         font-weight: 600;
         margin: 0;
+        white-space: nowrap; /* 💡[핵심] 글씨가 길어도 다음 줄로 넘어가지 않고 한 줄에 표시되도록 강제하는 설정입니다. */
     }
     
     /* 선택된 탭(3번 탭 내부 등) 색상 변경 */
