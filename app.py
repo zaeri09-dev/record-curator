@@ -11,6 +11,24 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 
+# ==========================================
+# 보안 설정: Streamlit Secrets에서 API Key 자동 읽기
+# ==========================================
+FIXED_MODEL_NAME = "gemini-3-flash-preview"
+
+def safe_get_secret(key: str) -> str:
+    """Streamlit Secrets가 없거나 설정되지 않아도 앱이 멈추지 않도록 안전하게 읽습니다."""
+    try:
+        return str(st.secrets.get(key, "")).strip()
+    except Exception:
+        return ""
+
+def get_api_key() -> str:
+    """Streamlit Secrets → 환경변수 순서로 Gemini API Key를 조용히 찾습니다."""
+    return safe_get_secret("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "").strip()
+
+api_key = get_api_key()
+
 # --- 데이터베이스 초기화 함수 ---
 @st.cache_resource
 def get_db_collection():
@@ -157,21 +175,6 @@ with st.sidebar:
         label_visibility="collapsed" # '메뉴를 선택하세요' 글씨는 숨기고 항목만 보여줍니다.
     )
     
-    st.divider() # 구분선
-    
-    st.header("⚙️ 시스템 설정")
-    api_key_input = st.text_input(
-        "Gemini API Key", 
-        type="password", 
-        placeholder="API 키를 입력하세요",
-        help="브라우저 세션 동안만 안전하게 보관됩니다."
-    )
-    
-    if api_key_input:
-        st.success("인증 완료 (임시 보호 중)")
-    else:
-        st.warning("서비스 이용을 위해 API 키가 필요합니다.")
-        
     st.divider()
     st.caption("© 2026 AI융합교육대학원 프로젝트")
 
@@ -204,8 +207,8 @@ if selected_menu == "📥 1. 보고서 분석 및 데이터 적재":
         analyze_btn = st.button("✨ RAG 파이프라인 분석 시작", type="primary", use_container_width=True)
 
     if analyze_btn:
-        if not api_key_input:
-            st.error("앗! 왼쪽 설정에서 Gemini API 키를 먼저 입력해 주세요.")
+        if not api_key:
+            st.error("Streamlit Secrets에 GEMINI_API_KEY가 등록되어 있지 않습니다.")
         elif not student_id_input or not student_name_input or not uploaded_file:
             st.warning("학번, 이름, 그리고 PDF 파일을 모두 확인해 주세요.")
         else:
@@ -215,10 +218,10 @@ if selected_menu == "📥 1. 보고서 분석 및 데이터 적재":
                 try:
                     document_text = extract_text_from_pdf(uploaded_file)
                     
-                    # 💡 [수정 필요] 향후 더 최신 모델이 나오면 아래 "gemini-3-flash-preview" 이름을 변경하세요.
+                    # 💡 [수정 필요] 향후 더 최신 모델이 나오면 FIXED_MODEL_NAME 값을 변경하세요.
                     llm = ChatGoogleGenerativeAI(
-                        model="gemini-3-flash-preview", 
-                        google_api_key=api_key_input,
+                        model=FIXED_MODEL_NAME, 
+                        google_api_key=api_key,
                         temperature=0.2 
                     )
                     parser = JsonOutputParser()
@@ -346,15 +349,15 @@ elif selected_menu == "🧑‍🎓 2. 학생 개별 대시보드 (세특)":
                         st.caption("누적된 조각들을 종합하여 하나의 완성된 글로 다듬습니다.")
                         
                         if st.button("🚀 NEIS 입력용 세특 자동 작성", type="primary", use_container_width=True):
-                            if not api_key_input:
-                                st.error("왼쪽 메뉴 아래의 설정에서 API 키를 입력해 주세요.")
+                            if not api_key:
+                                st.error("Streamlit Secrets에 GEMINI_API_KEY가 등록되어 있지 않습니다.")
                             else:
                                 with st.spinner("최고의 세특을 작성 중입니다... ✍️"):
                                     try:
-                                        # 💡 [수정 필요] 모델명 변경 시 수정
+                                        # 💡 [수정 필요] 모델명 변경 시 FIXED_MODEL_NAME 값을 수정하세요.
                                         summary_llm = ChatGoogleGenerativeAI(
-                                            model="gemini-3-flash-preview", 
-                                            google_api_key=api_key_input,
+                                            model=FIXED_MODEL_NAME, 
+                                            google_api_key=api_key,
                                             temperature=0.5 
                                         )
                                         
@@ -417,15 +420,15 @@ elif selected_menu == "📈 3. 학급 전체 통계 및 DB 관리":
                 pandas_query = st.text_input("질문 (예: 과학적탐구력 평균이 가장 높은 학생은?)", key="pandas_q")
                 
                 if st.button("분석 요청", type="primary"):
-                    if not api_key_input:
-                        st.error("왼쪽 메뉴 아래의 설정에서 API 키가 필요합니다.")
+                    if not api_key:
+                        st.error("Streamlit Secrets에 GEMINI_API_KEY가 등록되어 있지 않습니다.")
                     elif pandas_query:
                         with st.spinner("데이터베이스를 스캔 중입니다... 🔎"):
                             try:
-                                # 💡 [수정 필요] 모델명 변경 시 수정
+                                # 💡 [수정 필요] 모델명 변경 시 FIXED_MODEL_NAME 값을 수정하세요.
                                 llm_for_pandas = ChatGoogleGenerativeAI(
-                                    model="gemini-3-flash-preview", 
-                                    google_api_key=api_key_input, 
+                                    model=FIXED_MODEL_NAME, 
+                                    google_api_key=api_key, 
                                     temperature=0
                                 )
                                 agent = create_pandas_dataframe_agent(
